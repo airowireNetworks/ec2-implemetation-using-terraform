@@ -24,7 +24,7 @@ bash -c "$(curl -fsSL https://install.datadoghq.com/scripts/install_script_agent
 ###########################################
 
 cp /etc/datadog-agent/datadog.yaml \
-/etc/datadog-agent/datadog.yaml.bak || true
+/etc/datadog-agent/datadog.yaml.bak 2>/dev/null || true
 
 ###########################################
 # Main Datadog Configuration
@@ -42,13 +42,6 @@ logs_config:
 process_config:
   process_collection:
     enabled: true
-
-listeners:
-  - name: docker
-
-config_providers:
-  - name: docker
-    polling: true
 
 tags:
   - env:$ENVIRONMENT
@@ -76,12 +69,12 @@ logs:
 EOF
 
 ###########################################
-# Docker Monitoring
+# Docker Monitoring (Optional)
 ###########################################
 
 if command -v docker >/dev/null 2>&1; then
 
-    echo "Docker detected"
+    echo "Docker detected - enabling Docker integration"
 
     mkdir -p /etc/datadog-agent/conf.d/docker.d
 
@@ -94,6 +87,10 @@ EOF
 
     usermod -aG docker dd-agent || true
 
+else
+
+    echo "Docker not installed - skipping Docker integration"
+
 fi
 
 ###########################################
@@ -103,39 +100,10 @@ fi
 usermod -aG adm dd-agent || true
 
 ###########################################
-# Network Monitoring
-###########################################
-
-cat > /etc/datadog-agent/system-probe.yaml << EOF
-system_probe_config:
-  enabled: true
-
-network_config:
-  enabled: true
-
-runtime_security_config:
-  enabled: true
-EOF
-
-###########################################
-# System Probe Permissions
-###########################################
-
-if [ -f /opt/datadog-agent/embedded/bin/system-probe ]; then
-
-    setcap cap_sys_admin,cap_net_admin,cap_net_raw+ep \
-    /opt/datadog-agent/embedded/bin/system-probe
-
-fi
-
-###########################################
 # Restart Services
 ###########################################
 
 systemctl restart datadog-agent || true
-systemctl restart datadog-agent-process || true
-systemctl restart datadog-agent-sysprobe || true
-systemctl restart datadog-agent-security || true
 
 ###########################################
 # Validation
